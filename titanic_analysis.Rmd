@@ -1,0 +1,113 @@
+---
+title: "Titanic EDA"
+author: "Imaan Ali"
+date: "2025-06-02"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load the necessary libraries
+library(titanic)
+library(dplyr)
+library(ggplot2)
+
+# Load the dataset
+data <- titanic::titanic_train
+ 
+# Preview the first few rows
+head(data)
+
+# Check the structure  
+str(data)
+
+# Check for missing data
+colSums(is.na(data))
+sum(data$Cabin == "")
+```
+
+Cleaning the data:
+-Drop Cabin (too many missing values)
+-Drop PassengerId, Name and Ticket (not useful for analysis)
+-Fill missing Age with the median
+-Drop any rows with missing Embarked
+
+```{r, echo = TRUE}
+clean_data <- data %>%
+     select(-PassengerId, -Name, -Ticket, -Cabin) %>%
+     mutate(
+       Age = ifelse(is.na(Age), median(Age, na.rm = TRUE), Age)
+     ) %>%
+     filter(!is.na(Embarked))
+
+glimpse(clean_data)
+```
+
+EDA Goal: Understanding what factors might affect survival
+-How does survival rate differ by sex, age, class and fare?
+
+```{r pressure, echo=TRUE}
+#Check survival rate overall
+table(clean_data$Survived)
+prop.table(table(clean_data$Survived))
+# 61.6% survived, 38.3% mortality
+
+#Check survival rate by sex
+table(clean_data$Sex, clean_data$Survived)
+prop.table(table(clean_data$Sex, clean_data$Survived), 1)
+# Female survival rate is far higher than male - 74.20% > 18.89%
+
+#Plot survival by sex
+ggplot(clean_data, aes(x = Sex, fill = factor(Survived))) +
+     geom_bar(position = "fill") +
+     labs(title = "Survival Rate by Sex", y = "Proportion", fill = "Survived")
+ 
+```
+
+```{r, echo=TRUE}
+#Plot Survival by class
+ggplot(clean_data, aes(x = factor(Pclass), fill = factor(Survived))) +
+     geom_bar(position = "fill") +
+     labs(title = "Survival Rate by Passenger Class", x = "Class", y = "Proportion", fill = "Survived")
+```
+Passenger class was a strong indicator of survival. First-class passengers had significantly higher survival rates compared to those in second and third class, likely due to their proximity to lifeboats and priority during evacuation.
+
+
+```{r, echo=TRUE}
+#Plot Age distribution by Survival
+ggplot(clean_data, aes(x = Age, fill = factor(Survived))) +
+     geom_histogram(binwidth = 5, position = "identity", alpha = 0.6) +
+     labs(title = "Age Distribution by Survival", x = "Age", fill = "Survived")
+```
+The most common age range on board was around 20 to 30 years old, but this group had a relatively low survival rate. In contrast, children under 10 had noticeably higher survival rates, likely due to evacuation priorities. The plot suggests that while young adults made up a large portion of passengers, they were not prioritized during rescue efforts as much as women or children.
+
+
+```{r, echo=TRUE}
+#Plot Fare Vs Survival
+ggplot(clean_data, aes(x = factor(Survived), y = Fare, fill = factor(Survived))) +
+   geom_boxplot(alpha = 0.7) +
+   scale_fill_manual(values = c("0" = "#F8766D", "1" = "#00BA38"),
+                     labels = c("0" = "Did Not Survive", "1" = "Survived")) +         labs(
+        title = "Fare Distribution by Survival Status",
+         x = "Survival (0 = No, 1 = Yes)",
+         y = "Fare Paid",
+         fill = "Survival"
+     ) +
+     theme_minimal()
+```
+There is a clear positive association between fare amount and survival probability. Passengers who paid higher fares — generally associated with first-class accommodations — exhibited significantly higher survival rates. This trend suggests that socioeconomic status, as represented by fare paid, played a critical role in access to life-saving resources, likely due to cabin location proximity to lifeboats and preferential treatment during evacuation protocols.
+
+
+CONCLUSION: 
+This exploratory analysis of the Titanic dataset reveals several key factors that influenced passenger survival:
+
+Sex: Survival rate was significantly higher for females than males, indicating that women were likely prioritized during evacuation.
+
+Age: Children, especially those under 10, had higher survival rates, while the most common age group (20–30 years old) had relatively low survival rates.
+
+Passenger Class: First-class passengers had a distinct survival advantage compared to those in second or third class, suggesting that cabin location and evacuation priority were influenced by class.
+
+Fare: Passengers who paid higher fares were more likely to survive, reinforcing the impact of socioeconomic status on survival outcomes.
+
+Overall, survival was not random — it was strongly correlated with demographic and socioeconomic variables, highlighting inequalities in access to safety during the disaster.
